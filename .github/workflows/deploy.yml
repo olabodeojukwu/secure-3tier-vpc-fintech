@@ -1,0 +1,51 @@
+name: Auto-Deploy Fintech App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up SSH agent
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      # Step 3: Deploy to EC2
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@54.90.195.49 << 'EOF'
+          cd ~/fintech
+
+          # Pull latest code
+          git pull origin main
+
+          # Activate virtual environment
+          source venv/bin/activate
+
+          # Install/update dependencies
+          pip install -r requirements.txt
+
+          # Restart Gunicorn service
+          sudo systemctl restart fintech
+
+          # Health check
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/)
+          if [ "$RESPONSE" -eq 200 ]; then
+              echo "✅ App is healthy!"
+          else
+              echo "❌ Health check failed. Response code: $RESPONSE"
+              exit 1
+          fi
+          EOF
+
+
