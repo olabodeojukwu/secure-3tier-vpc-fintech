@@ -25,6 +25,8 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ./terraform
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
@@ -72,12 +74,13 @@ jobs:
             for ip in $EC2_PUBLIC_IPS; do
               echo "Deploying to $ip..."
               ssh -o StrictHostKeyChecking=no ubuntu@$ip bash <<'EOF'
-cd ~/fintech
-git pull origin main
-[ -d venv ] || python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart fintech
-EOF
+                cd ~/fintech
+                git pull origin main
+                [ -d venv ] || python3 -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt
+                sudo systemctl restart fintech
+              EOF
             done
+
 
