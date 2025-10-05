@@ -38,7 +38,6 @@ jobs:
         id: tf_outputs
         working-directory: ./terraform
         run: |
-          # Save outputs for deployment job
           echo "EC2_PUBLIC_IPS=$(terraform output -raw app_public_ips)" >> $GITHUB_ENV
           echo "ALB_DNS=$(terraform output -raw alb_dns)" >> $GITHUB_ENV
           echo "RDS_ENDPOINT=$(terraform output -raw rds_endpoint)" >> $GITHUB_ENV
@@ -72,12 +71,12 @@ jobs:
             for ip in $EC2_PUBLIC_IPS; do
               echo "Deploying to $ip..."
               ssh -o StrictHostKeyChecking=no ubuntu@$ip bash <<'EOF'
-                cd ~/fintech
-                git pull origin main
-                [ -d venv ] || python3 -m venv venv
-                source venv/bin/activate
-                pip install -r requirements.txt
-                sudo systemctl restart fintech
-              EOF
+cd ~/fintech
+git pull origin main
+[ -d venv ] || python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+sudo systemctl restart fintech
+EOF
             done
 
