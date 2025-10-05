@@ -11,7 +11,9 @@ __pycache__/
 # Terraform state
 *.tfstate
 *.tfstate.*
-
+*.tfstate.backup
+.terraform/
+terraform.tfvars        # DO NOT commit real secrets!
 
 # Ignore editor swap files
 *.swp
