@@ -26,3 +26,4 @@ venv/
 # SSH keys
 github-actions-key
 github-actions-key.pub
+terraform/terraform.tfvars
