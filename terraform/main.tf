@@ -1,4 +1,24 @@
-# VPC
+# ===============================================
+# Ì≥¶ Provider and Data Sources
+# ===============================================
+
+# Ì¥π Fetch all available availability zones in the current region
+data "aws_availability_zones" "available" {}
+
+# Ì¥π Get the latest Ubuntu AMI
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+}
+
+# ===============================================
+# Ìºê VPC Configuration
+# ===============================================
+
 resource "aws_vpc" "fintech_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -35,7 +55,7 @@ resource "aws_subnet" "private" {
 
 # NAT Gateway
 resource "aws_eip" "nat" {
-  vpc = true
+  domain = "vpc" # ‚úÖ replaces deprecated `vpc = true`
 }
 
 resource "aws_nat_gateway" "nat" {
@@ -80,18 +100,21 @@ resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
   vpc_id      = aws_vpc.fintech_vpc.id
   description = "Allow HTTP/HTTPS to ALB"
+
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -104,12 +127,14 @@ resource "aws_security_group" "app_sg" {
   name        = "app-sg"
   vpc_id      = aws_vpc.fintech_vpc.id
   description = "Allow ALB to EC2 app"
+
   ingress {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -122,12 +147,14 @@ resource "aws_security_group" "db_sg" {
   name        = "db-sg"
   vpc_id      = aws_vpc.fintech_vpc.id
   description = "Allow app to RDS"
+
   ingress {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
     security_groups = [aws_security_group.app_sg.id]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -149,6 +176,7 @@ resource "aws_lb_target_group" "app_tg" {
   port     = 5000
   protocol = "HTTP"
   vpc_id   = aws_vpc.fintech_vpc.id
+
   health_check {
     path                = "/"
     interval            = 30
@@ -163,6 +191,7 @@ resource "aws_lb_listener" "http_listener" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 80
   protocol          = "HTTP"
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app_tg.arn
@@ -171,11 +200,11 @@ resource "aws_lb_listener" "http_listener" {
 
 # EC2 app server
 resource "aws_instance" "app" {
-  count                     = 2
-  ami                       = data.aws_ami.ubuntu.id
-  instance_type             = var.instance_type
-  key_name                  = var.key_name
-  subnet_id                 = aws_subnet.private[count.index].id
+  count                      = 2
+  ami                        = data.aws_ami.ubuntu.id
+  instance_type              = var.instance_type
+  key_name                   = var.key_name
+  subnet_id                  = aws_subnet.private[count.index].id
   vpc_security_group_ids     = [aws_security_group.app_sg.id]
   associate_public_ip_address = false
 
@@ -200,13 +229,13 @@ resource "aws_instance" "app" {
 
 # RDS MySQL
 resource "aws_db_instance" "fintech_db" {
-  allocated_storage    = 20
-  engine               = "mysql"
-  engine_version       = "8.0"
-  instance_class       = "db.t3.micro"
-  name                 = "fintechdb"
-  username             = var.db_username
-  password             = var.db_password
+  allocated_storage      = 20
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  name                   = "fintechdb"
+  username               = var.db_username
+  password               = var.db_password
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   db_subnet_group_name   = aws_db_subnet_group.db_subnets.name
   skip_final_snapshot    = true
@@ -217,7 +246,7 @@ resource "aws_db_subnet_group" "db_subnets" {
   subnet_ids = aws_subnet.private[*].id
 }
 
-# CloudWatch monitoring
+# CloudWatch Logs
 resource "aws_cloudwatch_log_group" "app_logs" {
   name              = "/fintech/app"
   retention_in_days = 14
