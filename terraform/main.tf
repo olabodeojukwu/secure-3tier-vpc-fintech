@@ -233,7 +233,7 @@ resource "aws_db_instance" "fintech_db" {
   engine                 = "mysql"
   engine_version         = "8.0"
   instance_class         = "db.t3.micro"
-  name                   = "fintechdb"
+  db_name                = "fintechdb"
   username               = var.db_username
   password               = var.db_password
   vpc_security_group_ids = [aws_security_group.db_sg.id]
